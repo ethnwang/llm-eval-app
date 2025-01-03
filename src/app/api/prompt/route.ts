@@ -6,8 +6,45 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
+// Define our LLM configurations
+const models = [
+  {
+    name: 'mixtral-8x7b-32768',
+    displayName: 'Mixtral',
+    temperature: 0.7,
+    maxTokens: 1024,
+  },
+  {
+    name: 'llama-3.3-70b-versatile',
+    displayName: 'Meta',
+    temperature: 0.7,
+    maxTokens: 1024,
+  },
+  {
+    name: 'gemma2-9b-it',
+    displayName: 'Google',
+    temperature: 0.7,
+    maxTokens: 1024,
+  }
+];
 
-// ! how do we split it so that it is testing 3 different LLM's
+async function getModelResponse(prompt: string, model: typeof models[0]) {
+  const startTime = Date.now();
+  const response = await groq.chat.completions.create({
+    messages: [{ role: 'user', content: prompt }],
+    model: model.name,
+    temperature: model.temperature,
+    max_tokens: model.maxTokens,
+  });
+  const latency = Date.now() - startTime;
+
+  return {
+    content: response.choices[0]?.message?.content || '',
+    latency,
+    model: model.displayName
+  };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { prompt } = await req.json();
@@ -22,32 +59,39 @@ export async function POST(req: NextRequest) {
     // Create prompt record
     const promptRecord = await createPrompt(prompt);
 
-    // Get response from Groq
-    const startTime = Date.now();
-    const groqResponse = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: 'mixtral-8x7b-32768',
-      temperature: 0.7,
-      max_tokens: 1024,
-    });
-    const latency = Date.now() - startTime;
+    // Get responses from all models in parallel
+    const responses = await Promise.all(
+      models.map(async (model) => {
+        try {
+          const response = await getModelResponse(prompt, model);
+          
+          // Store response in database
+          const dbResponse = await createResponse({
+            promptId: promptRecord.id,
+            modelName: model.name,
+            content: response.content,
+            latency: response.latency,
+          });
 
-    // Store response
-    const response = await createResponse({
-      promptId: promptRecord.id,
-      modelName: 'groq-mixtral',
-      content: groqResponse.choices[0]?.message?.content || '',
-      latency,
-    });
+          return {
+            ...response,
+            id: dbResponse.id
+          };
+        } catch (error) {
+          console.error(`Error with model ${model.name}:`, error);
+          return {
+            model: model.displayName,
+            content: 'Error generating response',
+            latency: 0,
+            error: true
+          };
+        }
+      })
+    );
 
     return NextResponse.json({
       prompt: promptRecord,
-      response: {
-        ...response,
-        model: 'groq-mixtral',
-        content: groqResponse.choices[0]?.message?.content,
-        latency,
-      }
+      responses
     });
 
   } catch (error) {
