@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Card,
   CardContent,
@@ -36,7 +36,7 @@ import {
   Radar,
 } from 'recharts';
 
-type ModelMetrics = {
+interface ModelMetrics {
   relevancy: number;
   correctness: number;
   hallucination: number;
@@ -44,9 +44,9 @@ type ModelMetrics = {
   otherModelScores: {
     normalizedScore: number;
   };
-};
+}
 
-type StatisticalMetrics = {
+interface StatisticalMetrics {
   meteorScore: number;
   otherStatisticalScores: {
     weightedScores: {
@@ -56,7 +56,7 @@ type StatisticalMetrics = {
       toxicityWeight: number;
     };
   };
-};
+}
 
 interface EvaluationMetrics {
   responseId: string;
@@ -70,16 +70,12 @@ interface EvaluationResultsProps {
 }
 
 const EvaluationResults: React.FC<EvaluationResultsProps> = ({ evaluations }) => {
-  const [selectedModel, setSelectedModel] = useState<string | null>(
-    evaluations[0]?.modelName || null
-  );
-
   // Prepare data for radar chart
   const getRadarData = (evaluation: EvaluationMetrics) => [
     { metric: 'Relevancy', value: evaluation.model.relevancy },
     { metric: 'Correctness', value: evaluation.model.correctness },
-    { metric: 'Clarity', value: 10 - evaluation.model.hallucination }, // Invert hallucination
-    { metric: 'Safety', value: 10 - evaluation.model.toxicity }, // Invert toxicity
+    { metric: 'Clarity', value: 10 - evaluation.model.hallucination },
+    { metric: 'Safety', value: 10 - evaluation.model.toxicity },
   ];
 
   // Prepare data for bar comparison
@@ -150,7 +146,7 @@ const EvaluationResults: React.FC<EvaluationResultsProps> = ({ evaluations }) =>
                         <TableCell key={`${evaluation.modelName}-${metric}`}>
                           {metric === 'Overall Score'
                             ? evaluation.statistical.meteorScore.toFixed(2)
-                            : Number(evaluation.model[metric.toLowerCase() as keyof ModelMetrics]).toFixed(2)}
+                            : (evaluation.model[metric.toLowerCase() as keyof ModelMetrics] as number).toFixed(2)}
                         </TableCell>
                       ))}
                     </TableRow>

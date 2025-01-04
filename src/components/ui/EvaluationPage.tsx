@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// EvaluationPage.tsx
+import React from 'react';
 import EvaluationResults from '@/components/ui/EvaluationResults';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,9 +11,9 @@ interface EvaluationPageProps {
 }
 
 const EvaluationPage: React.FC<EvaluationPageProps> = ({ promptId }) => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [evaluations, setEvaluations] = useState(null);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [evaluations, setEvaluations] = React.useState<any>(null);
 
   const runEvaluation = async () => {
     if (!promptId) return;
