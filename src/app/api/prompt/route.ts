@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Groq } from 'groq-sdk';
-import { createPrompt, createResponse } from '@/db/queries';
+import { createPrompt, createResponse, createMetrics, createEvaluationResult, createEvaluationRun, completeEvaluationRun } from '@/db/queries';
+import { evaluateResponse } from '@/lib/evaluation';
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -59,6 +60,12 @@ export async function POST(req: NextRequest) {
     // Create prompt record
     const promptRecord = await createPrompt(prompt);
 
+    // Create evaluation run
+    const evaluationRun = await createEvaluationRun(
+      `Evaluation for prompt: ${prompt.slice(0, 50)}...`,
+      'Automatic evaluation of model responses'
+    );
+
     // Get responses from all models in parallel
     const responses = await Promise.all(
       models.map(async (model) => {
@@ -73,13 +80,48 @@ export async function POST(req: NextRequest) {
             latency: response.latency,
           });
 
+          // Get evaluation for this response
+          const evaluation = await evaluateResponse(prompt, response.content);
+          
+          if (evaluation) {
+            // Store metrics in database
+            const metrics = await createMetrics({
+              responseId: dbResponse.id,
+              ...evaluation.statistical,
+              ...evaluation.model
+            });
+
+            // Create evaluation result
+            await createEvaluationResult({
+              runId: evaluationRun.id,
+              responseId: dbResponse.id,
+              statisticalMetricId: metrics.statistical.id,
+              modelMetricId: metrics.model.id,
+              metadata: {
+                evaluatedAt: new Date().toISOString(),
+                evaluatorModel: 'gemini-1.5-pro'
+              }
+            });
+
+            return {
+              id: dbResponse.id,
+              model: model.displayName,
+              content: response.content,
+              latency: response.latency,
+              evaluation
+            };
+          }
+
           return {
-            ...response,
-            id: dbResponse.id
+            id: dbResponse.id,
+            model: model.displayName,
+            content: response.content,
+            latency: response.latency
           };
         } catch (error) {
           console.error(`Error with model ${model.name}:`, error);
           return {
+            id: 'error-' + Date.now(),
             model: model.displayName,
             content: 'Error generating response',
             latency: 0,
@@ -88,6 +130,9 @@ export async function POST(req: NextRequest) {
         }
       })
     );
+
+    // Complete the evaluation run
+    await completeEvaluationRun(evaluationRun.id);
 
     return NextResponse.json({
       prompt: promptRecord,

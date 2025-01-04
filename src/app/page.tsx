@@ -1,13 +1,26 @@
-"use client";
+"use client"
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import EvaluationResults from "@/components/ui/EvaluationResults";
 
 interface Response {
+  id: string;
   model: string;
   content: string;
   latency: number;
   error?: boolean;
+  evaluation?: {
+    statistical: {
+      meteorScore: number;
+    };
+    model: {
+      relevancy: number;
+      correctness: number;
+      hallucination: number;
+      toxicity: number;
+    };
+  };
 }
 
 interface PromptResponse {
@@ -91,7 +104,7 @@ export default function Home() {
               placeholder="Enter your prompt here..."
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              onKeyPress={(e) => {
+              onKeyUp={(e) => {
                 if (e.key === "Enter" && !loading) {
                   handleSubmit();
                 }
@@ -133,7 +146,7 @@ export default function Home() {
                   </Card>
                 ))
             : result?.responses.map((response, index) => (
-                <Card key={index}>
+                <Card key={index} className="flex flex-col">
                   <CardHeader>
                     <CardTitle className="flex justify-between items-center">
                       <span>{response.model}</span>
@@ -142,16 +155,79 @@ export default function Home() {
                       </span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="flex-grow">
                     {response.error ? (
                       <p className="text-destructive">Error generating response</p>
                     ) : (
-                      <p className="whitespace-pre-wrap">{response.content}</p>
+                      <div className="space-y-4">
+                        <p className="whitespace-pre-wrap">{response.content}</p>
+                        {response.evaluation && (
+                          <div className="mt-4 pt-4 border-t">
+                            <h4 className="text-sm font-semibold mb-2">Evaluation Metrics</h4>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div>
+                                <span className="text-muted-foreground">Score:</span>{" "}
+                                {response.evaluation.statistical.meteorScore.toFixed(2)}
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Relevancy:</span>{" "}
+                                {response.evaluation.model.relevancy.toFixed(2)}
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Correctness:</span>{" "}
+                                {response.evaluation.model.correctness.toFixed(2)}
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Hallucination:</span>{" "}
+                                {response.evaluation.model.hallucination.toFixed(2)}
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Toxicity:</span>{" "}
+                                {response.evaluation.model.toxicity.toFixed(2)}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </CardContent>
                 </Card>
               ))}
         </div>
+
+        {/* Evaluation Results */}
+        {result?.responses.some(r => r.evaluation) && (
+          <div className="mt-8">
+            <EvaluationResults 
+              evaluations={result.responses
+                .filter(r => r.evaluation)
+                .map(r => ({
+                  responseId: r.id,
+                  modelName: r.model,
+                  statistical: {
+                    meteorScore: r.evaluation!.statistical.meteorScore,
+                    otherStatisticalScores: {
+                      weightedScores: {
+                        relevancyWeight: 0.3,
+                        correctnessWeight: 0.3,
+                        hallucinationWeight: 0.2,
+                        toxicityWeight: 0.2
+                      }
+                    }
+                  },
+                  model: {
+                    relevancy: r.evaluation!.model.relevancy,
+                    correctness: r.evaluation!.model.correctness,
+                    hallucination: r.evaluation!.model.hallucination,
+                    toxicity: r.evaluation!.model.toxicity,
+                    otherModelScores: {
+                      normalizedScore: r.evaluation!.statistical.meteorScore / 10
+                    }
+                  }
+                }))}
+            />
+          </div>
+        )}
       </main>
     </div>
   );

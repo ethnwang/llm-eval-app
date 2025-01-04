@@ -58,27 +58,36 @@ export async function createResponse({
   return response;
 }
 
-// Metrics helpers
+
 export async function createMetrics({
   responseId,
   meteorScore,
+  otherStatisticalScores,
   relevancy,
   correctness,
   hallucination,
-  toxicity
+  toxicity,
+  otherModelScores
 }: {
   responseId: string;
-  meteorScore?: number;
-  relevancy?: number;
-  correctness?: number;
-  hallucination?: number;
-  toxicity?: number;
+  meteorScore: number;
+  otherStatisticalScores?: Record<string, any>;
+  relevancy: number;
+  correctness: number;
+  hallucination: number;
+  toxicity: number;
+  otherModelScores?: Record<string, any>;
 }) {
   // Create statistical metrics
   const [statMetrics] = await db.insert(statisticalMetricsTable)
     .values({
       responseId,
-      meteorScore
+      meteorScore,
+      otherStatisticalScores,
+      metadata: {
+        createdAt: new Date().toISOString(),
+        version: '1.0'
+      }
     })
     .returning();
 
@@ -89,7 +98,12 @@ export async function createMetrics({
       relevancy,
       correctness,
       hallucination,
-      toxicity
+      toxicity,
+      otherModelScores,
+      metadata: {
+        createdAt: new Date().toISOString(),
+        version: '1.0'
+      }
     })
     .returning();
 
@@ -133,4 +147,29 @@ export async function getEvaluationResults(responseId: string) {
     }
   });
   return results;
+}
+
+export async function createEvaluationResult({
+  runId,
+  responseId,
+  statisticalMetricId,
+  modelMetricId,
+  metadata
+}: {
+  runId: string;
+  responseId: string;
+  statisticalMetricId: string;
+  modelMetricId: string;
+  metadata?: Record<string, any>;
+}) {
+  const [result] = await db.insert(evaluationResultsTable)
+    .values({
+      runId,
+      responseId,
+      statisticalMetricId,
+      modelMetricId,
+      metadata
+    })
+    .returning();
+  return result;
 }
