@@ -80,6 +80,15 @@ Response: {response}
 Rating (0-10):`,
 };
 
+// Define a custom error type for the API
+interface ApiError {
+  status?: number;
+  message?: string;
+  name?: string;
+  code?: string | number;
+  [key: string]: string | number | undefined;  // Index signature with specific types
+}
+
 async function getEvalScore(
     template: string, 
     prompt: string, 
@@ -99,8 +108,10 @@ async function getEvalScore(
         const score = numberMatch ? parseFloat(numberMatch[0]) : 0;
         
         return isNaN(score) ? 0 : Math.min(Math.max(score, 0), 10);
-      } catch (error: any) {
-        if (error?.status === 429 && retryCount < MAX_RETRIES) {
+      }  catch (error: unknown) {  // Start with unknown type
+        const apiError = error as ApiError;  // Type assertion to our custom type
+        
+        if (apiError?.status === 429 && retryCount < MAX_RETRIES) {
           console.log(`Rate limited, retrying in ${RETRY_DELAY}ms... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
           await delay(RETRY_DELAY * (retryCount + 1));
           return getEvalScore(template, prompt, response, retryCount + 1);

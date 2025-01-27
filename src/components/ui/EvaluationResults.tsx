@@ -36,7 +36,7 @@ import {
   Radar,
 } from 'recharts';
 
-interface ModelMetrics {
+export interface ModelMetrics {
   relevancy: number;
   correctness: number;
   hallucination: number;
@@ -46,7 +46,7 @@ interface ModelMetrics {
   };
 }
 
-interface StatisticalMetrics {
+export interface StatisticalMetrics {
   meteorScore: number;
   otherStatisticalScores: {
     weightedScores: {
@@ -58,7 +58,7 @@ interface StatisticalMetrics {
   };
 }
 
-interface EvaluationMetrics {
+export interface EvaluationMetrics {
   responseId: string;
   modelName: string;
   statistical: StatisticalMetrics;
@@ -78,10 +78,17 @@ const EvaluationResults: React.FC<EvaluationResultsProps> = ({ evaluations }) =>
     { metric: 'Safety', value: 10 - evaluation.model.toxicity },
   ];
 
+  type MetricValue = number | { normalizedScore: number } | string;
+
+  type ComparisonDataPoint = {
+    name: string;
+    [modelName: string]: MetricValue;
+  };
+
   // Prepare data for bar comparison
   const getComparisonData = () => {
     return ['Relevancy', 'Correctness', 'Hallucination', 'Toxicity'].map((metric) => {
-      const data: Record<string, any> = { name: metric };
+      const data: ComparisonDataPoint = { name: metric };
       evaluations.forEach((evaluation) => {
         const metricKey = metric.toLowerCase() as keyof typeof evaluation.model;
         data[evaluation.modelName] = evaluation.model[metricKey];

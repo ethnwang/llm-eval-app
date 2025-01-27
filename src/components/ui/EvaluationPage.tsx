@@ -1,10 +1,11 @@
 // EvaluationPage.tsx
 import React from 'react';
-import EvaluationResults from '@/components/ui/EvaluationResults';
+import EvaluationResults, {EvaluationMetrics} from '@/components/ui/EvaluationResults';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 
 interface EvaluationPageProps {
   promptId?: string;
@@ -13,7 +14,7 @@ interface EvaluationPageProps {
 const EvaluationPage: React.FC<EvaluationPageProps> = ({ promptId }) => {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [evaluations, setEvaluations] = React.useState<any>(null);
+  const [evaluations, setEvaluations] = React.useState<EvaluationMetrics[] | null>(null);
 
   const runEvaluation = async () => {
     if (!promptId) return;
@@ -79,7 +80,7 @@ const EvaluationPage: React.FC<EvaluationPageProps> = ({ promptId }) => {
             <EvaluationResults evaluations={evaluations} />
           ) : (
             <div className="text-center text-muted-foreground py-12">
-              Click "Run Evaluation" to analyze LLM responses
+              Click &quot;Run Evaluation&quot; to analyze LLM responses
             </div>
           )}
         </CardContent>
