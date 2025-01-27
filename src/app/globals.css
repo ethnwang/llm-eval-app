@@ -20,10 +20,10 @@
 
 /* Default Theme Fallback */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --secondary-background: #f8f8f8;
-  --accent-color: #cccccc;
+  --background: #fdf6e3; /* Beige background */
+  --foreground: #654321; /* Darker brown text for contrast */
+  --secondary-background: #f5deb3; /* Light tan */
+  --accent-color: #e8d5b7; /* Lighter accent tan */
 }
 
 body {
